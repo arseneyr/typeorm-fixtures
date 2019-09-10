@@ -1,61 +1,55 @@
-import * as path from 'path';
-import * as fs from 'fs';
-import * as glob from 'glob';
-import * as Joi from 'joi';
-import * as loaders from './loaders';
-import { IFixturesConfig, ILoader } from './interface';
-import { jFixturesSchema } from './schema';
-
-export class Loader {
-    public fixtureConfigs: IFixturesConfig[] = [];
-    private loaders: ILoader[] = [];
-
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const path = require("path");
+const fs = require("fs");
+const glob = require("glob");
+const Joi = require("joi");
+const loaders = require("./loaders");
+const schema_1 = require("./schema");
+class Loader {
     constructor() {
+        this.fixtureConfigs = [];
+        this.loaders = [];
         for (const loader of Object.values(loaders)) {
-            this.loaders.push(new (loader as any)());
+            this.loaders.push(new loader());
         }
     }
-
     /**
      * @param {string} fixturesPath
      */
-    load(fixturesPath: string): void {
+    load(fixturesPath) {
         const extensions = this.loaders.map(l => l.extensionSupport.map(e => e.substr(1)).join(',')).join(',');
-        let files: string[] = [];
-
+        let files = [];
         try {
             if (fs.lstatSync(fixturesPath).isFile()) {
                 if (!this.loaders.find(l => l.isSupport(fixturesPath))) {
                     throw new Error(`File extension "${path.extname(fixturesPath)}" not support`);
                 }
-
                 files = [fixturesPath];
             }
-        } catch (e) {
+        }
+        catch (e) {
             files = glob.sync(path.resolve(fixturesPath));
         }
-
         for (const file of files) {
             const loader = this.loaders.find(l => l.isSupport(file));
-
             /* istanbul ignore else */
             if (loader) {
-                const fixtureConfig: IFixturesConfig = loader.load(file);
-                const { error } = Joi.validate(fixtureConfig, jFixturesSchema);
-
+                const fixtureConfig = loader.load(file);
+                const { error } = Joi.validate(fixtureConfig, schema_1.jFixturesSchema);
                 if (error) {
                     throw new Error(`Invalid fixtures config. File "${file}"`);
                 }
-
                 /* istanbul ignore else */
                 if (fixtureConfig.processor) {
                     fixtureConfig.processor = path.isAbsolute(fixtureConfig.processor)
                         ? path.resolve(fixtureConfig.processor)
                         : path.resolve(path.dirname(file), fixtureConfig.processor);
                 }
-
                 this.fixtureConfigs.push(fixtureConfig);
             }
         }
     }
 }
+exports.Loader = Loader;
+//# sourceMappingURL=Loader.js.map
